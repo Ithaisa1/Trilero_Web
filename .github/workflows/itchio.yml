@@ -54,7 +54,13 @@ jobs:
       - name: Download butler
         shell: pwsh
         run: |
-          Invoke-WebRequest https://broth.itch.ovh/butler/windows-amd64/LATEST/archive/default -OutFile butler.zip
+          # Try PowerShell download with allowed redirects
+          try {
+            Invoke-WebRequest -Uri https://broth.itch.ovh/butler/windows-amd64/LATEST/archive/default -OutFile butler.zip -MaximumRedirection 5 -AllowInsecureRedirect
+          } catch {
+            Write-Host "Invoke-WebRequest failed, trying curl.exe with -L"
+            curl.exe -L -o butler.zip https://broth.itch.ovh/butler/windows-amd64/LATEST/archive/default
+          }
           Expand-Archive butler.zip -DestinationPath $PWD -Force
           echo "$PWD\butler.exe" | Out-File -FilePath $env:GITHUB_PATH -Append
 
