@@ -65,4 +65,6 @@ jobs:
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
         run: |
-          .\butler.exe push build/web "$env:ITCH_USER/$env:ITCH_GAME:$env:ITCH_CHANNEL"
+          $spec = "Athyverse/Trilero_web:html5"
+          Write-Host "Butler target: $spec"
+          .\butler.exe push build/web $spec
