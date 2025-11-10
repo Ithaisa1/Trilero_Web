@@ -1,0 +1,65 @@
+name: Publish to itch.io (HTML5)
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  web-build-and-push:
+    runs-on: windows-latest
+    env:
+      ITCH_USER: Athyverse
+      ITCH_GAME: Trilero_web
+      ITCH_CHANNEL: html5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install deps
+        run: |
+          python -m pip install -U pip
+          python -m pip install -r requirements.txt
+          python -m pip install -U pygbag
+
+      - name: Build web (pygbag)
+        run: |
+          python -m pygbag --build .
+
+      - name: Patch index.html to use CDN
+        shell: pwsh
+        run: |
+          (Get-Content 'build/web/index.html') `
+            -replace '="/archives/','="https://pygame-web.github.io/archives/' `
+            -replace '//archives/','https://pygame-web.github.io/archives/' `
+            -replace 'https://pygame-web.github.io/archives//','https://pygame-web.github.io/archives/' `
+            | Set-Content 'build/web/index.html' -Encoding UTF8
+
+      - name: Zip web folder (artifact)
+        shell: pwsh
+        run: |
+          Compress-Archive -Path 'build/web/*' -DestinationPath 'build/web.zip' -Force
+
+      - name: Upload web.zip artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-zip
+          path: build/web.zip
+
+      - name: Download butler
+        shell: pwsh
+        run: |
+          Invoke-WebRequest https://broth.itch.ovh/butler/windows-amd64/LATEST/archive/default -OutFile butler.zip
+          Expand-Archive butler.zip -DestinationPath $PWD -Force
+          echo "$PWD\butler.exe" | Out-File -FilePath $env:GITHUB_PATH -Append
+
+      - name: Push to itch.io
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+        run: |
+          butler push build/web $env:ITCH_USER/$env:ITCH_GAME:$env:ITCH_CHANNEL

@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+*.tmp
+.env
+.venv/
+
+# Build artifacts
+build/
+dist/
+*.spec
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Archives
+*.zip
+
+# Web helper folders (not tracked)
+Web/
+web2/
+
+# Ensure web build zip is ignored
+build/web.zip

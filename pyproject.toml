@@ -1,0 +1,13 @@
+[tool.pygbag]
+# Nombre mostrado en la app web
+app_name = "Trilero"
+# Script principal
+entrypoint = "main.py"
+# Incluir carpeta de assets completa en el paquete web
+assets = [
+  "assets/**/*"
+]
+# No empaquetar en .pyz (mejor para depurar en web)
+archive = false
+# Tiempo máximo de precarga de assets (segundos)
+preload = 30
