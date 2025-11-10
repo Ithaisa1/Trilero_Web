@@ -7,7 +7,7 @@ on:
 
 jobs:
   web-build-and-push:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     env:
       ITCH_USER: Athyverse
       ITCH_GAME: Trilero_web
@@ -32,18 +32,18 @@ jobs:
           python -m pygbag --build .
 
       - name: Patch index.html to use CDN
-        shell: pwsh
+        shell: bash
         run: |
-          (Get-Content 'build/web/index.html') `
-            -replace '="/archives/','="https://pygame-web.github.io/archives/' `
-            -replace '//archives/','https://pygame-web.github.io/archives/' `
-            -replace 'https://pygame-web.github.io/archives//','https://pygame-web.github.io/archives/' `
-            | Set-Content 'build/web/index.html' -Encoding UTF8
+          sed -i \
+            -e 's/="\/archives\//="https:\/\/pygame-web.github.io\/archives\//g' \
+            -e 's#//archives/#https://pygame-web.github.io/archives/#g' \
+            -e 's#https://pygame-web.github.io/archives//#https://pygame-web.github.io/archives/#g' \
+            build/web/index.html
 
       - name: Zip web folder (artifact)
-        shell: pwsh
+        shell: bash
         run: |
-          Compress-Archive -Path 'build/web/*' -DestinationPath 'build/web.zip' -Force
+          (cd build && zip -r web.zip web/*)
 
       - name: Upload web.zip artifact
         uses: actions/upload-artifact@v4
@@ -51,27 +51,18 @@ jobs:
           name: web-zip
           path: build/web.zip
 
-      - name: Download butler
-        shell: pwsh
+      - name: Download butler (linux)
+        shell: bash
         run: |
-          # Use curl.exe to avoid insecure redirect limitations in PowerShell iwr
-          $url = "https://broth.itch.ovh/butler/windows-amd64/LATEST/archive/default"
-          $max = 3
-          for ($i=1; $i -le $max; $i++) {
-            Write-Host "Downloading butler (attempt $i/$max)"
-            try {
-              curl.exe -L -f -o butler.zip $url
-              if (Test-Path butler.zip) { break }
-            } catch {
-              Start-Sleep -Seconds 2
-            }
-            if ($i -eq $max) { throw "Failed to download butler.zip after $max attempts" }
-          }
-          Expand-Archive butler.zip -DestinationPath $PWD -Force
-          echo "$PWD\butler.exe" | Out-File -FilePath $env:GITHUB_PATH -Append
+          url="https://broth.itch.ovh/butler/linux-amd64/LATEST/archive/default"
+          curl -L -f -o butler.zip "$url"
+          unzip -o butler.zip -d "$GITHUB_WORKSPACE"
+          chmod +x "$GITHUB_WORKSPACE/butler"
+          echo "$GITHUB_WORKSPACE" >> $GITHUB_PATH
 
       - name: Push to itch.io
+        shell: bash
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
         run: |
-          butler push build/web $env:ITCH_USER/$env:ITCH_GAME:$env:ITCH_CHANNEL
+          "$GITHUB_WORKSPACE/butler" push build/web "$ITCH_USER/$ITCH_GAME:$ITCH_CHANNEL"
