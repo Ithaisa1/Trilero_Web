@@ -54,12 +54,18 @@ jobs:
       - name: Download butler
         shell: pwsh
         run: |
-          # Try PowerShell download with allowed redirects
-          try {
-            Invoke-WebRequest -Uri https://broth.itch.ovh/butler/windows-amd64/LATEST/archive/default -OutFile butler.zip -MaximumRedirection 5 -AllowInsecureRedirect
-          } catch {
-            Write-Host "Invoke-WebRequest failed, trying curl.exe with -L"
-            curl.exe -L -o butler.zip https://broth.itch.ovh/butler/windows-amd64/LATEST/archive/default
+          # Use curl.exe to avoid insecure redirect limitations in PowerShell iwr
+          $url = "https://broth.itch.ovh/butler/windows-amd64/LATEST/archive/default"
+          $max = 3
+          for ($i=1; $i -le $max; $i++) {
+            Write-Host "Downloading butler (attempt $i/$max)"
+            try {
+              curl.exe -L -f -o butler.zip $url
+              if (Test-Path butler.zip) { break }
+            } catch {
+              Start-Sleep -Seconds 2
+            }
+            if ($i -eq $max) { throw "Failed to download butler.zip after $max attempts" }
           }
           Expand-Archive butler.zip -DestinationPath $PWD -Force
           echo "$PWD\butler.exe" | Out-File -FilePath $env:GITHUB_PATH -Append
